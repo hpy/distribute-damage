@@ -6,6 +6,9 @@ import javax.swing.event.MenuEvent;
 import javax.swing.event.MenuListener;
 import javax.swing.text.NumberFormatter;
 import java.awt.*;
+import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -19,8 +22,11 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 class ConfigMenu implements Runnable, MenuListener, IExtensionStateListener{
     private JMenu menuButton;
 
+
     ConfigMenu() {
         Utilities.callbacks.registerExtensionStateListener(this);
+
+
     }
 
     public void run()
@@ -51,10 +57,36 @@ class ConfigMenu implements Runnable, MenuListener, IExtensionStateListener{
 class ConfigurableSettings {
     private LinkedHashMap<String, String> settings;
     private NumberFormatter onlyInt;
+    public static final HashMap<String, String> Keys = new HashMap<>();
+
+    public static TreeSet<String> urls = new TreeSet<String>();
+    JTextField urlInputBox;
+
 
     ConfigurableSettings() {
+
+        // List of all the keys and their extended info
+        Keys.put("delay","Delay between requests");
+        Keys.put("concurrency","Max concurrent requests");
+        //Keys.put("host_throttle","Custom RPS Per Host");
+        Keys.put("pause all traffic", "pause all traffic");
+        Keys.put("max param length", "max param length");
+        Keys.put("scan params", "scan params");
+        Keys.put("scan path start", "scan path start");
+        Keys.put("scan path end", "scan path end");
+        Keys.put("scan root folder", "scan root folder");
+        Keys.put("scan other folders", "scan other folders");
+        Keys.put("scan cookies", "scan cookies");
+        Keys.put("scan headers", "scan headers");
+        Keys.put("target headers", "target headers");
+        Keys.put("include content type in key", "include content type in key");
+        Keys.put("header target mime types", "header target mime types");
+        Keys.put("header target status codes", "header target status codes");
+
+
         settings = new LinkedHashMap<>();
-        put("throttle", 1000);
+        put("delay", 100);
+        put("concurrency", 10);
         put("pause all traffic", false);
         put("max param length", 30);
         put("scan params", true);
@@ -165,6 +197,15 @@ class ConfigurableSettings {
         }
     }
 
+    static void addURL(String url){
+        if (urls.contains(url)) return;
+        urls.add(url);
+    }
+    static void removeURL(String url){
+        urls.remove(url);
+    }
+
+
     ConfigurableSettings showSettings() {
         JPanel panel = new JPanel();
         panel.setLayout(new GridLayout(0, 2));
@@ -173,7 +214,7 @@ class ConfigurableSettings {
 
         for(String key: settings.keySet()) {
             String type = getType(key);
-            panel.add(new JLabel("\n"+key+": "));
+            panel.add(new JLabel("\n"+Keys.get(key)+": "));
 
             if (type.equals("boolean")) {
                 JCheckBox box = new JCheckBox();
@@ -192,6 +233,69 @@ class ConfigurableSettings {
                 panel.add(box);
                 configured.put(key, box);
             }
+
+            // if (key == "delay"){
+            // //  self.urlLabel = swing.JLabel("URL List")
+            // //             self.urlLabel.setFont(Font("Tahoma", 1, 12))
+            // //             self.urlDescLabel = swing.JLabel("URLs in this list should be in the format: protocol://host:port/optional-path")
+            // //             self.urlDescLabel.setFont(Font("Tahoma", 0, 12))
+            // //             self.urlDescLabel2 = swing.JLabel("Example: https://127.0.0.1:443/index. Port is optional, 80 or 443 will be assumed.")
+            // //             self.urlDescLabel2.setFont(Font("Tahoma", 0, 12))
+            // //             self.pasteButton = swing.JButton("Paste", actionPerformed=self.paste)
+            // //             self.loadButton = swing.JButton("Copy List", actionPerformed=self.setClipboardText)
+            // //             self.removeButton = swing.JButton("Remove", actionPerformed=self.remove)
+            // //             self.clearButton = swing.JButton("Clear", actionPerformed=self.clear)
+
+
+
+            //             JLabel label = new JLabel("URL List");
+            //             label.setFont(new Font("Tahoma", 1, 12));
+            //             panel.add(label);
+            //             //configured.put(key, label);
+
+            //             JPanel panel1 = UIUtil.GetXJPanel();
+
+
+            //             DefaultListModel<String> urlListModel = new DefaultListModel<String>();
+            //             JList<String> urlList = new JList<String>(urlListModel);
+            //             JScrollPane urlListPane = new JScrollPane(urlList);
+            //             panel.add(urlListPane);
+            //            // configured.put(key, urlListPane);
+
+
+            //            GridBagConstraints gbc = new GridBagConstraints();
+            //            gbc.insets = new Insets(-765, 0, 0, 5);
+            //            gbc.fill = GridBagConstraints.HORIZONTAL;
+            //            gbc.gridx = 0;
+            //            gbc.gridy = 1;
+
+            //             JButton addButton = new JButton("Add");
+            //             addButton.addActionListener(new ActionListener() {
+            //                 public void actionPerformed(ActionEvent arg0) {
+            //                     addURL(urlInputBox.getText());
+            //                   }
+            //             });
+            //             panel.add(addButton, gbc);
+            //             //configured.put(key, addButton);
+
+            //             JButton removeButton = new JButton("Remove");
+            //             removeButton.addActionListener(new ActionListener() {
+            //                 public void actionPerformed(ActionEvent arg0) {
+            //                     addURL(urlInputBox.getText());
+            //                   }
+            //             });
+            //             panel.add(removeButton);
+            //             //configured.put(key, removeButton);
+
+
+            //             // The box to put the URL into
+            //             urlInputBox = new JTextField(getString(key));
+            //             panel.add(urlInputBox);
+            //             //configured.put(key, urlInputBox);
+
+
+            // }
+
         }
 
         int result = JOptionPane.showConfirmDialog(Utilities.getBurpFrame(), panel, "Attack Config", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
@@ -329,158 +433,158 @@ public class Utilities {
         return path;
     }
 
-    public static String getExtension(byte[] request) {
-        String url = getPathFromRequest(request);
-        int query_start = url.indexOf('?');
-        if (query_start == -1) {
-            query_start = url.length();
-        }
-        url = url.substring(0, query_start);
-        int last_dot = url.lastIndexOf('.');
-        if (last_dot == -1) {
-            return "";
-        }
-        else {
-            return url.substring(last_dot);
-        }
-    }
+    // public static String getExtension(byte[] request) {
+    //     String url = getPathFromRequest(request);
+    //     int query_start = url.indexOf('?');
+    //     if (query_start == -1) {
+    //         query_start = url.length();
+    //     }
+    //     url = url.substring(0, query_start);
+    //     int last_dot = url.lastIndexOf('.');
+    //     if (last_dot == -1) {
+    //         return "";
+    //     }
+    //     else {
+    //         return url.substring(last_dot);
+    //     }
+    // }
 
-    public static IHttpRequestResponse fetchFromSitemap(URL url) {
-        IHttpRequestResponse[] pages = callbacks.getSiteMap(sensibleURL(url));
-        for (IHttpRequestResponse page : pages) {
-            if (page.getResponse() != null) {
-                if (url.equals(getURL(page))) {
-                    return page;
-                }
-            }
-        }
-        return null;
-    }
+//     public static IHttpRequestResponse fetchFromSitemap(URL url) {
+//         IHttpRequestResponse[] pages = callbacks.getSiteMap(sensibleURL(url));
+//         for (IHttpRequestResponse page : pages) {
+//             if (page.getResponse() != null) {
+//                 if (url.equals(getURL(page))) {
+//                     return page;
+//                 }
+//             }
+//         }
+//         return null;
+//     }
 
-    static int countMatches(byte[] response, byte[] match) {
-        int matches = 0;
-        if (match.length < 4) {
-            return matches;
-        }
+//     static int countMatches(byte[] response, byte[] match) {
+//         int matches = 0;
+//         if (match.length < 4) {
+//             return matches;
+//         }
 
-        int start = 0;
-        // Utilities.out("#"+response.length);
-        while (start < response.length) {
-            start = helpers.indexOf(response, match, true, start, response.length);
-            if (start == -1)
-                break;
-            matches += 1;
-            start += match.length;
-        }
+//         int start = 0;
+//         // Utilities.out("#"+response.length);
+//         while (start < response.length) {
+//             start = helpers.indexOf(response, match, true, start, response.length);
+//             if (start == -1)
+//                 break;
+//             matches += 1;
+//             start += match.length;
+//         }
 
-        return matches;
-    }
+//         return matches;
+//     }
 
-    static byte[] replace(byte[] request, byte[] find, byte[] replace) {
-        List<int[]> matches = getMatches(request, find, -1);
-        try {
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            for (int i=0;i<matches.size();i++) {
-                if (i == 0) {
-                    outputStream.write(Arrays.copyOfRange(request, 0, matches.get(i)[0]));
-                }
-                else {
-                    outputStream.write(Arrays.copyOfRange(request, matches.get(i-1)[1], matches.get(i)[0]));
-                }
-                outputStream.write(replace);
+//     static byte[] replace(byte[] request, byte[] find, byte[] replace) {
+//         List<int[]> matches = getMatches(request, find, -1);
+//         try {
+//             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+//             for (int i=0;i<matches.size();i++) {
+//                 if (i == 0) {
+//                     outputStream.write(Arrays.copyOfRange(request, 0, matches.get(i)[0]));
+//                 }
+//                 else {
+//                     outputStream.write(Arrays.copyOfRange(request, matches.get(i-1)[1], matches.get(i)[0]));
+//                 }
+//                 outputStream.write(replace);
 
-                if (i==matches.size()-1) {
-                    outputStream.write(Arrays.copyOfRange(request, matches.get(i)[1], request.length));
-                    break;
-                }
-            }
-            request = outputStream.toByteArray();
-        } catch (IOException e) {
-            return null;
-        }
+//                 if (i==matches.size()-1) {
+//                     outputStream.write(Arrays.copyOfRange(request, matches.get(i)[1], request.length));
+//                     break;
+//                 }
+//             }
+//             request = outputStream.toByteArray();
+//         } catch (IOException e) {
+//             return null;
+//         }
 
-        return request;
-    }
+//         return request;
+//     }
 
-    static List<int[]> getMatches(byte[] response, byte[] match, int giveUpAfter) {
-        if (giveUpAfter == -1) {
-            giveUpAfter = response.length;
-        }
+//     static List<int[]> getMatches(byte[] response, byte[] match, int giveUpAfter) {
+//         if (giveUpAfter == -1) {
+//             giveUpAfter = response.length;
+//         }
 
-        List<int[]> matches = new ArrayList<>();
+//         List<int[]> matches = new ArrayList<>();
 
-//        if (match.length < 4) {
-//            return matches;
-//        }
+// //        if (match.length < 4) {
+// //            return matches;
+// //        }
 
-        int start = 0;
-        while (start < giveUpAfter) {
-            start = helpers.indexOf(response, match, true, start, giveUpAfter);
-            if (start == -1)
-                break;
-            matches.add(new int[]{start, start + match.length});
-            start += match.length;
-        }
+//         int start = 0;
+//         while (start < giveUpAfter) {
+//             start = helpers.indexOf(response, match, true, start, giveUpAfter);
+//             if (start == -1)
+//                 break;
+//             matches.add(new int[]{start, start + match.length});
+//             start += match.length;
+//         }
 
-        return matches;
-    }
+//         return matches;
+//     }
 
-    public static byte[] fixContentLength(byte[] request) {
-        if (countMatches(request, helpers.stringToBytes("Content-Length: ")) > 0) {
-            int start = Utilities.getBodyStart(request);
-            int contentLength = request.length - start;
-            return setHeader(request, "Content-Length", Integer.toString(contentLength));
-        }
-        else {
-            return request;
-        }
-    }
+    // public static byte[] fixContentLength(byte[] request) {
+    //     if (countMatches(request, helpers.stringToBytes("Content-Length: ")) > 0) {
+    //         int start = Utilities.getBodyStart(request);
+    //         int contentLength = request.length - start;
+    //         return setHeader(request, "Content-Length", Integer.toString(contentLength));
+    //     }
+    //     else {
+    //         return request;
+    //     }
+    // }
 
-    public static byte[] setHeader(byte[] request, String header, String value) {
-        int[] offsets = getHeaderOffsets(request, header);
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        try {
-            outputStream.write( Arrays.copyOfRange(request, 0, offsets[1]));
-            outputStream.write(helpers.stringToBytes(value));
-            outputStream.write(Arrays.copyOfRange(request, offsets[2], request.length));
-            return outputStream.toByteArray();
-        } catch (IOException e) {
-            throw new RuntimeException("Request creation unexpectedly failed");
-        } catch (NullPointerException e) {
-            Utilities.out("header locating fail: "+header);
-            Utilities.out("'"+helpers.bytesToString(request)+"'");
-            throw new RuntimeException("Can't find the header");
-        }
-    }
+    // public static byte[] setHeader(byte[] request, String header, String value) {
+    //     int[] offsets = getHeaderOffsets(request, header);
+    //     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    //     try {
+    //         outputStream.write( Arrays.copyOfRange(request, 0, offsets[1]));
+    //         outputStream.write(helpers.stringToBytes(value));
+    //         outputStream.write(Arrays.copyOfRange(request, offsets[2], request.length));
+    //         return outputStream.toByteArray();
+    //     } catch (IOException e) {
+    //         throw new RuntimeException("Request creation unexpectedly failed");
+    //     } catch (NullPointerException e) {
+    //         Utilities.out("header locating fail: "+header);
+    //         Utilities.out("'"+helpers.bytesToString(request)+"'");
+    //         throw new RuntimeException("Can't find the header");
+    //     }
+    // }
 
-    public static int[] getHeaderOffsets(byte[] request, String header) {
-        int i = 0;
-        int end = request.length;
-        while (i < end) {
-            int line_start = i;
-            while (i < end && request[i++] != ' ') {
-            }
-            byte[] header_name = Arrays.copyOfRange(request, line_start, i - 2);
-            int headerValueStart = i;
-            while (i < end && request[i++] != '\n') {
-            }
-            if (i == end) {
-                break;
-            }
+    // public static int[] getHeaderOffsets(byte[] request, String header) {
+    //     int i = 0;
+    //     int end = request.length;
+    //     while (i < end) {
+    //         int line_start = i;
+    //         while (i < end && request[i++] != ' ') {
+    //         }
+    //         byte[] header_name = Arrays.copyOfRange(request, line_start, i - 2);
+    //         int headerValueStart = i;
+    //         while (i < end && request[i++] != '\n') {
+    //         }
+    //         if (i == end) {
+    //             break;
+    //         }
 
-            String header_str = helpers.bytesToString(header_name);
+    //         String header_str = helpers.bytesToString(header_name);
 
-            if (header.equals(header_str)) {
-                int[] offsets = {line_start, headerValueStart, i - 2};
-                return offsets;
-            }
+    //         if (header.equals(header_str)) {
+    //             int[] offsets = {line_start, headerValueStart, i - 2};
+    //             return offsets;
+    //         }
 
-            if (i + 2 < end && request[i] == '\r' && request[i + 1] == '\n') {
-                break;
-            }
-        }
-        return null;
-    }
+    //         if (i + 2 < end && request[i] == '\r' && request[i + 1] == '\n') {
+    //             break;
+    //         }
+    //     }
+    //     return null;
+    // }
 
     public static int getBodyStart(byte[] response) {
         int i = 0;
